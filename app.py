@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 import requests
 import folium
 from streamlit_folium import st_folium
+import plotly.express as px
 
 from pvgis_client import fetch_monthly_ghi
 
@@ -180,11 +180,21 @@ with tab_overview:
                 width="stretch"
             )
 
-            fig = plt.figure()
-            plt.plot(df["month_name"], df[col], marker="o")
-            plt.xlabel("Month")
-            plt.ylabel(label)
-            st.pyplot(fig, clear_figure=True)
+            fig = px.line(
+                df,
+                x="month_name",
+                y=col,
+                markers=True,
+                height=260,
+                width=420,
+                labels={"month_name": "Month", col: label},
+            )
+            fig.update_traces(line={"color": "#2563eb"}, marker={"size": 7})
+            fig.update_layout(
+                margin={"l": 40, "r": 20, "t": 20, "b": 40},
+                transition={"duration": 500},
+            )
+            st.plotly_chart(fig, use_container_width=False)
 
             csv = df.to_csv(index=False).encode("utf-8")
             st.download_button("Download CSV", csv, "monthly_ghi.csv", "text/csv")
