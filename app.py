@@ -27,7 +27,13 @@ def parse_int_or_none(s: str):
 def cached_fetch(lat, lon, sy, ey):
     return fetch_monthly_ghi(lat, lon, startyear=sy, endyear=ey)
 
-st.title("☀️ Solar Radiation Finder")
+st.markdown(
+    """
+    <h1 style="margin-bottom: 0;">☀️ <strong>Helios</strong></h1>
+    <p style="margin-top: 0; font-size: 0.85em; color: #6c757d;">by Harsh</p>
+    """,
+    unsafe_allow_html=True,
+)
 st.caption("Search a place or click on the map → get monthly global solar radiation (GHI).")
 
 tab_overview, tab_about = st.tabs(["Overview", "About"])
