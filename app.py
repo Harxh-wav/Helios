@@ -1,4 +1,7 @@
- 
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import requests
 import folium
 from streamlit_folium import st_folium
 
@@ -24,8 +27,6 @@ def parse_int_or_none(s: str):
 def cached_fetch(lat, lon, sy, ey):
     return fetch_monthly_ghi(lat, lon, startyear=sy, endyear=ey)
 
-st.title("☀️ Solar Radiation Finder")
-st.caption("Search a place or click on the map → get monthly global solar radiation (GHI).")
 st.markdown(
     """
     <style>
@@ -83,14 +84,12 @@ with tab_overview:
         st.session_state.results = []
 
     # Layout
-    left, right = st.columns([1.1, 1])
     left, right = st.columns([1.05, 1])
 
     with left:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.subheader("📍 Location")
         query = st.text_input("Search place (e.g., New Delhi, Jaipur, Chennai, IIT Bombay)", value="")
-        search = st.button("Search")
         search = st.button("Search", use_container_width=True)
 
         if search and query.strip():
@@ -114,14 +113,6 @@ with tab_overview:
         st.write(f"**Selected:** lat={st.session_state.lat:.6f}, lon={st.session_state.lon:.6f}")
         st.markdown("</div>", unsafe_allow_html=True)
 
-        st.subheader("🗺️ Map (click to pick)")
-        m = folium.Map(location=[st.session_state.lat, st.session_state.lon], zoom_start=st.session_state.zoom)
-        folium.Marker([st.session_state.lat, st.session_state.lon], tooltip="Selected location").add_to(m)
-
-        map_out = st_folium(m, height=450, width=None)
-        if map_out and map_out.get("last_clicked"):
-            st.session_state.lat = float(map_out["last_clicked"]["lat"])
-            st.session_state.lon = float(map_out["last_clicked"]["lng"])
         with st.expander("🗺️ Map (optional)", expanded=False):
             m = folium.Map(
                 location=[st.session_state.lat, st.session_state.lon],
@@ -145,15 +136,12 @@ with tab_overview:
     with right:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.subheader("⚙️ Settings")
-        sy = st.text_input("Start year (optional)", value="")
-        ey = st.text_input("End year (optional)", value="")
         units = st.selectbox("Units", ["kWh/m²/month", "kWh/m²/day", "MJ/m²/day"], index=0)
         month = st.selectbox("Highlight month", ["All"] + MONTHS, index=0)
         with st.expander("Advanced: Year range", expanded=False):
             sy = st.text_input("Start year (optional)", value="")
             ey = st.text_input("End year (optional)", value="")
 
-        run = st.button("Calculate")
         run = st.button("Calculate", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -180,3 +168,53 @@ with tab_overview:
             else:
                 col = "ghi_mj_m2_day"
                 label = "GHI (MJ/m²/day)"
+
+            # Highlight selected month
+            if month != "All":
+                mi = MONTHS.index(month) + 1
+                val = float(df.loc[df["month"] == mi, col].iloc[0])
+                st.metric(month, f"{val:.3f} ({label})")
+
+            st.dataframe(
+                df[["month_name", col]].rename(columns={"month_name":"Month", col:label}),
+                width="stretch"
+            )
+
+            fig = plt.figure()
+            plt.plot(df["month_name"], df[col], marker="o")
+            plt.xlabel("Month")
+            plt.ylabel(label)
+            st.pyplot(fig, clear_figure=True)
+
+            csv = df.to_csv(index=False).encode("utf-8")
+            st.download_button("Download CSV", csv, "monthly_ghi.csv", "text/csv")
+
+        except Exception as e:
+            st.error(str(e))
+    else:
+        st.info("Search a place or click the map, then press **Calculate**.")
+
+with tab_about:
+    st.subheader("About this app")
+
+    st.write(
+        "This application estimates monthly global solar radiation (GHI) "
+        "for any location using long-term meteorological data."
+    )
+
+    st.markdown(
+        """
+        **Data Source**
+        - PVGIS MRcalc API
+        - Dataset: PVGIS-ERA5 (ERA5 reanalysis)
+
+        **Method**
+        - Monthly global horizontal irradiation `H(h)_m` (kWh/m²/month)
+        - Long-term monthly averages computed across available years
+        - Daily averages and MJ values derived for convenience
+
+        **Use Case**
+        - Academic projects
+        - Preliminary solar resource assessment
+        """
+    )
