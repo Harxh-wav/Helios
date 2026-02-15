@@ -9,7 +9,7 @@ from streamlit_folium import st_folium
 from pvgis_client import fetch_monthly_ghi
 from nasa_power_client import fetch_monthly_climate
 
-st.set_page_config(page_title="Solar Radiation Finder", layout="wide")
+st.set_page_config(page_title="Helios · Solar & Climate Studio", layout="wide")
 
 MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
@@ -37,45 +37,58 @@ def cached_fetch_climate(lat, lon, sy, ey):
 st.markdown(
     """
     <style>
+      .stApp { background: radial-gradient(circle at 15% -10%, #dbeafe 0%, #f8fafc 35%, #f8fafc 100%); }
       .app-hero {
-        background: linear-gradient(135deg, #0f172a, #1e293b);
+        background: linear-gradient(125deg, #0f172a 0%, #1e293b 45%, #1d4ed8 100%);
         color: #f8fafc;
-        padding: 24px 28px;
-        border-radius: 18px;
-        margin-bottom: 18px;
-        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+        padding: 28px;
+        border-radius: 20px;
+        margin-bottom: 14px;
+        box-shadow: 0 14px 38px rgba(15, 23, 42, 0.24);
         animation: fadeUp 600ms ease-out;
       }
-      .app-hero h1 {
-        margin: 0;
-        font-size: 2.2rem;
-        letter-spacing: 0.5px;
-      }
-      .app-hero p {
-        margin: 6px 0 0 0;
-        font-size: 0.9rem;
-        color: #cbd5f5;
+      .app-hero h1 { margin: 0; font-size: 2.1rem; letter-spacing: .3px; }
+      .app-hero p { margin: 6px 0 0 0; color: #dbeafe; font-size: 0.95rem; }
+      .app-chip {
+        display: inline-block;
+        padding: 4px 10px;
+        border: 1px solid rgba(191, 219, 254, .45);
+        border-radius: 999px;
+        font-size: .76rem;
+        margin-bottom: 10px;
+        color: #bfdbfe;
+        letter-spacing: .04em;
       }
       .section-card {
-        background: #ffffff;
+        background: rgba(255, 255, 255, .92);
         border: 1px solid #e2e8f0;
-        padding: 16px 18px;
+        padding: 18px;
         border-radius: 16px;
-        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+        backdrop-filter: blur(3px);
       }
+      .kpi-card {
+        background: linear-gradient(150deg, #eff6ff, #f8fafc);
+        border: 1px solid #bfdbfe;
+        border-radius: 14px;
+        padding: 14px;
+      }
+      .kpi-label { color: #475569; font-size: .8rem; }
+      .kpi-value { color: #0f172a; font-size: 1.1rem; font-weight: 600; }
       @keyframes fadeUp {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
       }
     </style>
     <div class="app-hero">
-      <h1>☀️ <strong>Helios</strong></h1>
-      <p>by Harsh — Solar + Climate insights in a cleaner, calmer layout.</p>
+      <span class="app-chip">SOLAR ANALYTICS DASHBOARD</span>
+      <h1>☀️ <strong>Helios Studio</strong></h1>
+      <p>Professional-grade monthly solar radiation and climate insights for any location.</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
-st.caption("Search a place, adjust settings, and get monthly solar radiation (GHI) + climate (humidity/rainfall).")
+st.caption("Search a place, fine-tune data preferences, and generate polished solar + climate reports instantly.")
 
 tab_overview, tab_about = st.tabs(["Overview", "About"])
 
@@ -89,6 +102,20 @@ with tab_overview:
         st.session_state.zoom = 6
     if "results" not in st.session_state:
         st.session_state.results = []
+
+    m1, m2, m3 = st.columns(3)
+    m1.markdown(
+        f'<div class="kpi-card"><div class="kpi-label">Latitude</div><div class="kpi-value">{st.session_state.lat:.4f}</div></div>',
+        unsafe_allow_html=True,
+    )
+    m2.markdown(
+        f'<div class="kpi-card"><div class="kpi-label">Longitude</div><div class="kpi-value">{st.session_state.lon:.4f}</div></div>',
+        unsafe_allow_html=True,
+    )
+    m3.markdown(
+        '<div class="kpi-card"><div class="kpi-label">Data Sources</div><div class="kpi-value">PVGIS + NASA POWER</div></div>',
+        unsafe_allow_html=True,
+    )
 
     left, right = st.columns([1.05, 1])
 
@@ -213,7 +240,14 @@ with tab_overview:
                 if month != "All":
                     mi = MONTHS.index(month) + 1
                     val = float(df.loc[df["month"] == mi, col].iloc[0])
-                    st.metric(month, f"{val:.3f}", help=label)
+                    st.metric(month, f"{val:.3f}", help=label, border=True)
+
+                avg_ghi = df[col].mean()
+                peak_month_idx = int(df[col].idxmax())
+                peak_month = df.loc[peak_month_idx, "Month"]
+                p1, p2 = st.columns(2)
+                p1.metric("Yearly monthly average", f"{avg_ghi:.3f}")
+                p2.metric("Peak month", peak_month)
 
                 st.dataframe(df[["Month", col]].rename(columns={col: label}), width="stretch")
 
